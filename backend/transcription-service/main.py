@@ -126,18 +126,25 @@ def transcribe(url, timeout, lang, send_transcription):
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe_route():
-    data = request.get_json()
-    print(data)
-    url = data['url']
-    caller_id = data['caller_id']  # Get the caller ID from the request
-    lang = data['lang']
-    timeout = 80 # temporarily set
-    print(lang)
+    if 'audio' not in request.files:
+        print("No audio file provided in the request.")  # Debug line
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    audio_file = request.files['audio']
+    caller_id = request.form.get('caller_id', 'unknown')  # Optional caller ID
+    lang = request.form.get('lang', 'eng')  # Optional language
+
+    print(f"Received audio file from caller ID: {caller_id}, Language: {lang}")  # Debug line
 
     def send_transcription(line):
+        # Emit the transcription result back to the frontend
         socketio.emit('transcription_update', {'caller_id': caller_id, 'line': line})
 
-    threading.Thread(target=transcribe, args=(url, timeout, lang, send_transcription)).start()
+    # Set a timeout for the transcription process (you can adjust this as needed)
+    timeout = 70  # Example timeout value in seconds
+
+    # Start transcription in a separate thread
+    threading.Thread(target=transcribe, args=(audio_file, timeout, lang, send_transcription)).start()
     return jsonify({'status': 'Transcription started'})
 
 # @app.route('/')

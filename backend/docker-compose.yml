@@ -2,9 +2,8 @@ version: '3.8'
 
 services:
   frontend:
-    image: ihl-harbor.apps.innovate.sg-cna.com/community-defender-ai/frontend:v7
     build:
-      context: ./community-defender-fe
+      context: ../frontend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -14,7 +13,6 @@ services:
       - identification-service
 
   transcription-service:
-    image: ihl-harbor.apps.innovate.sg-cna.com/community-defender-ai/transcription-service:v7
     build:
       context: ./transcription-service
       dockerfile: Dockerfile
@@ -24,7 +22,6 @@ services:
       - app-network
 
   summarization-service:
-    image: ihl-harbor.apps.innovate.sg-cna.com/community-defender-ai/summarization-service:v7
     build:
       context: ./summarization-service
       dockerfile: Dockerfile
@@ -34,7 +31,6 @@ services:
       - app-network
 
   identification-service:
-    image: ihl-harbor.apps.innovate.sg-cna.com/community-defender-ai/identification-service:v7
     build:
       context: ./identification-service
       dockerfile: Dockerfile
