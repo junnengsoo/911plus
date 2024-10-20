@@ -1,0 +1,106 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+.border-black {
+  border-color: black;
+}
+
+.border-transparent {
+  border-color: transparent;
+}
+
+.red-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin: 0em;
+  background-color: red;
+  display: inline-block;
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.message-operator {
+  background-color: #77c1e6;
+  color: black;
+}
+
+.message-caller {
+  background-color: #7e96a1;
+  color: black;
+}
+
+.input-field {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.card-field {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre-line;
+}
+
+
+.glow {
+  transition: box-shadow 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 0, 255, 0); 
+}
+
+.glow.active {
+  box-shadow: 0 0 20px rgba(0, 0, 255, 0.8); }
+
+@keyframes vibrate {
+  /* Define your vibration animation keyframes here */
+  0% { transform: translate(0); }
+  25% { transform: translate(-2px, 2px); }
+  50% { transform: translate(2px, -2px); }
+  75% { transform: translate(-2px, -2px); }
+  100% { transform: translate(2px, 2px); }
+}
+  
+.vibrate {
+  animation: vibrate 0.2s linear infinite;
+}
