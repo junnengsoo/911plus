@@ -49,6 +49,7 @@ subsequent_prompt = """The call continues, with the transcript as follows. Extra
 include important details such as symptoms, personal details, location."""
 
 def first_summarize(transcript, api):
+    print(transcript)
     if api == 0:
         response = co1.chat(
             message=first_prompt + transcript,

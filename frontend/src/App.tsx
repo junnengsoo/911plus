@@ -82,6 +82,7 @@ export function App() {
 
   useEffect(() => {
     socket.on("transcription_update", ({ caller_id, line }: {caller_id: number, line : Message}) => {
+      console.log("transcript update: ", {caller_id, line})
       setCallers((prevCallers) =>
         prevCallers.map((caller) =>
           caller.id === caller_id

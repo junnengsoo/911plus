@@ -59,7 +59,6 @@ def main(send_transcription):
                 curr_speaker = 0
                 curr_line = ''
                 for word_struct in words:
-                    print(words)
                     word_speaker = word_struct["speaker"]
                     word = word_struct["punctuated_word"]
                     if word_speaker == curr_speaker:
@@ -78,10 +77,13 @@ def main(send_transcription):
                     lines.append(full_line)
                     full_transcript.append(full_line)
                 print(full_transcript)
-                # if curr_speaker == 1: # caller
-                #     send_transcription({"sender": "Caller", "text": lines})
-                # else:
-                #     send_transcription({"sender": "Operator", "text": lines})
+                print(curr_speaker)
+                if curr_speaker == 1: # caller
+                    print("sent")
+                    send_transcription({"sender": "Caller", "text": lines})
+                else:
+                    print("sent")
+                    send_transcription({"sender": "Operator", "text": lines})
 
         def on_metadata(self, metadata, **kwargs):
             print(f"Metadata: {metadata}")
@@ -170,6 +172,7 @@ def main(send_transcription):
 def transcribe_route():
 
     def send_transcription(line):
+        print(line)
         socketio.emit('transcription_update', {'caller_id': 0, 'line': line})
 
     threading.Thread(target=main, args=(send_transcription,)).start()
