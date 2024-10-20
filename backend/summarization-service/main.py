@@ -3,7 +3,7 @@ from summarize import first_summarize, subsequent_summarize
 from flask_cors import CORS
 
 app = Flask(__name__)
-# CORS(app)  # This will enable CORS for all routes
+CORS(app)  # This will enable CORS for all routes
 
 @app.route('/summarize', methods=['POST'])
 def summarize():

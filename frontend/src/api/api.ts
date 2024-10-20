@@ -24,34 +24,34 @@ export const getCallers = async (): Promise<Caller[]> => {
       url: 'https://niclee1219.github.io/SCDFxDELL-995calls/Audio/ambulanceai.mp3',
       lang: "eng",
     },
-    {
-      id: 2,
-      name: 'Caller 2',
-      condition: 'Unknown',
-      address: 'Address 2',
-      callTime: '00:00',
-      isLiveCall: true,
-      messages: [
-      ],
-      extractedMessages: 'Extracted messages for caller 2',
-      isOperatorOnline: false,
-      url: 'https://niclee1219.github.io/SCDFxDELL-995calls/Audio/case%201-AI-chinese.mp3',
-      lang: "chi",
-    },
-    {
-      id: 3,
-      name: 'Caller 3',
-      condition: 'Unknown',
-      address: 'Address 3',
-      callTime: '00:00',
-      isLiveCall: true,
-      messages: [
-      ],
-      extractedMessages: 'Extracted messages for caller 3',
-      isOperatorOnline: false,
-      url: 'https://niclee1219.github.io/SCDFxDELL-995calls/Audio/case%205-english.mp3',
-      lang: "eng"
-    }
+    // {
+    //   id: 2,
+    //   name: 'Caller 2',
+    //   condition: 'Unknown',
+    //   address: 'Address 2',
+    //   callTime: '00:00',
+    //   isLiveCall: true,
+    //   messages: [
+    //   ],
+    //   extractedMessages: 'Extracted messages for caller 2',
+    //   isOperatorOnline: false,
+    //   url: 'https://niclee1219.github.io/SCDFxDELL-995calls/Audio/case%201-AI-chinese.mp3',
+    //   lang: "chi",
+    // },
+    // {
+    //   id: 3,
+    //   name: 'Caller 3',
+    //   condition: 'Unknown',
+    //   address: 'Address 3',
+    //   callTime: '00:00',
+    //   isLiveCall: true,
+    //   messages: [
+    //   ],
+    //   extractedMessages: 'Extracted messages for caller 3',
+    //   isOperatorOnline: false,
+    //   url: 'https://niclee1219.github.io/SCDFxDELL-995calls/Audio/case%205-english.mp3',
+    //   lang: "eng"
+    // }
   ];
 
   // const transcript = ["911, what's your emergency?","Hi, I need help! There's been a car accident on 324 Maple Street.",
