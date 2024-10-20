@@ -27,6 +27,7 @@ import time
 from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*")  # Allow all origins
 
@@ -128,7 +129,7 @@ def main(send_transcription):
             utterance_end_ms="1000",
             vad_events=True,
             # Time in milliseconds of silence to wait for before finalizing speech
-            endpointing=300,
+            endpointing=3000,
             diarize=True,
         )
 
