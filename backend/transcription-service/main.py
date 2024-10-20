@@ -1,3 +1,21 @@
+# Copyright 2023-2024 Deepgram SDK contributors. All Rights Reserved.
+# Use of this source code is governed by a MIT license that can be found in the LICENSE file.
+# SPDX-License-Identifier: MIT
+
+from dotenv import load_dotenv
+from time import sleep
+import logging
+
+from deepgram.utils import verboselogs
+
+from deepgram import (
+    DeepgramClient,
+    DeepgramClientOptions,
+    LiveTranscriptionEvents,
+    LiveOptions,
+    Microphone,
+)
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import threading
@@ -8,32 +26,39 @@ import os
 import time
 from flask_cors import CORS
 
-# app = Flask(__name__, static_folder='static')
-
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
-socketio = SocketIO(app, cors_allowed_origins="*")
+# CORS(app)  # This will enable CORS for all routes
+socketio = SocketIO(app)
 
 load_dotenv()
-API_KEY = os.getenv("DEEPGRAM_API_KEY")
-config = DeepgramClientOptions(
-            options={"keepalive": "true"} # Comment this out to see the effect of not using keepalive
-        )
+
 full_transcript = []
 TAG = 'SPEAKER '
 
-def transcribe(url, timeout, lang, send_transcription):
+def main(send_transcription):
     try:
-        deepgram = DeepgramClient(API_KEY, config)
+        # example of setting up a client config. logging values: WARNING, VERBOSE, DEBUG, SPAM
+        # config = DeepgramClientOptions(
+        #     verbose=verboselogs.DEBUG, options={"keepalive": "true"}
+        # )
+        # deepgram: DeepgramClient = DeepgramClient("", config)
+        # otherwise, use default config
+        deepgram: DeepgramClient = DeepgramClient()
+
         dg_connection = deepgram.listen.live.v("1")
+
+        def on_open(self, open, **kwargs):
+            print("Connection Open")
 
         def on_message(self, result, **kwargs):
             if result.is_final:
                 lines = []
                 words = result.channel.alternatives[0].words
+                print(words)
                 curr_speaker = 0
                 curr_line = ''
                 for word_struct in words:
+                    print(words)
                     word_speaker = word_struct["speaker"]
                     word = word_struct["punctuated_word"]
                     if word_speaker == curr_speaker:
@@ -52,240 +77,102 @@ def transcribe(url, timeout, lang, send_transcription):
                     lines.append(full_line)
                     full_transcript.append(full_line)
                 print(full_transcript)
-                if curr_speaker == 0: # operator
-                    send_transcription({"sender": "Operator", "text": lines})
-                else:
-                    send_transcription({"sender": "Caller", "text": lines})
+                # if curr_speaker == 1: # caller
+                #     send_transcription({"sender": "Caller", "text": lines})
+                # else:
+                #     send_transcription({"sender": "Operator", "text": lines})
 
         def on_metadata(self, metadata, **kwargs):
-            print(f"\n\n{metadata}\n\n")
+            print(f"Metadata: {metadata}")
+
+        def on_speech_started(self, speech_started, **kwargs):
+            print("Speech Started")
+
+        def on_utterance_end(self, utterance_end, **kwargs):
+            print("Utterance End")
+        #     global is_finals
+        #     if len(is_finals) > 0:
+        #         utterance = " ".join(is_finals)
+        #         print(f"Utterance End: {utterance}")
+        #         is_finals = []
+
+        def on_close(self, close, **kwargs):
+            print("Connection Closed")
 
         def on_error(self, error, **kwargs):
-            print(f"\n\n{error}\n\n")
+            print(f"Handled Error: {error}")
 
+        def on_unhandled(self, unhandled, **kwargs):
+            print(f"Unhandled Websocket Message: {unhandled}")
+
+        dg_connection.on(LiveTranscriptionEvents.Open, on_open)
         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
         dg_connection.on(LiveTranscriptionEvents.Metadata, on_metadata)
+        dg_connection.on(LiveTranscriptionEvents.SpeechStarted, on_speech_started)
+        dg_connection.on(LiveTranscriptionEvents.UtteranceEnd, on_utterance_end)
+        dg_connection.on(LiveTranscriptionEvents.Close, on_close)
         dg_connection.on(LiveTranscriptionEvents.Error, on_error)
+        dg_connection.on(LiveTranscriptionEvents.Unhandled, on_unhandled)
 
-        if lang == "eng": 
-            print("yes")
-            options = LiveOptions(
+        options: LiveOptions = LiveOptions(
             model="nova-2",
             language="en-US",
-            diarize=True,
+            # Apply smart formatting to the output
             smart_format=True,
-        )
-        else: 
-            options = LiveOptions(
-            model="nova-2",
-            language="zh",
+            # Raw audio format details
+            encoding="linear16",
+            channels=1,
+            sample_rate=16000,
+            # To get UtteranceEnd, the following must be set:
+            interim_results=True,
+            utterance_end_ms="1000",
+            vad_events=True,
+            # Time in milliseconds of silence to wait for before finalizing speech
+            endpointing=300,
             diarize=True,
-            smart_format=True,
         )
 
-        dg_connection.start(options)
-        print("started")
+        addons = {
+            # Prevent waiting for additional numbers
+            "no_delay": "true"
+        }
 
-        lock_exit = threading.Lock()
-        exit = False
+        print("\n\nPress Enter to stop recording...\n\n")
+        if dg_connection.start(options, addons=addons) is False:
+            print("Failed to connect to Deepgram")
+            return
 
-        def myThread():
-            with httpx.stream("GET", url) as r:
-                for data in r.iter_bytes():
-                    lock_exit.acquire()
-                    if exit:
-                        break
-                    lock_exit.release()
-                    dg_connection.send(data)
+        # Open a microphone stream on the default input device
+        microphone = Microphone(dg_connection.send)
 
-        myHttp = threading.Thread(target=myThread)
-        myHttp.start()
+        # start microphone
+        microphone.start()
 
-        def finish_connection():
-            time.sleep(timeout)
-            dg_connection.finish()
-            print("Connection finished after", timeout, "seconds")
+        # wait until finished
+        input("")
 
-        timer_thread = threading.Thread(target=finish_connection)
-        timer_thread.start()
+        # Wait for the microphone to close
+        microphone.finish()
 
-        input("Press Enter to stop recording...\n\n")
-
-        lock_exit.acquire()
-        exit = True
-        lock_exit.release()
-
-        myHttp.join()
+        # Indicate that we've finished
         dg_connection.finish()
 
         print("Finished")
+        # sleep(30)  # wait 30 seconds to see if there is any additional socket activity
+        # print("Really done!")
 
     except Exception as e:
         print(f"Could not open socket: {e}")
         return
 
-@app.route('/transcribe', methods=['POST'])
+@app.route('/transcribe', methods=['GET'])
 def transcribe_route():
-    if 'audio' not in request.files:
-        print("No audio file provided in the request.")  # Debug line
-        return jsonify({'error': 'No audio file provided'}), 400
-
-    audio_file = request.files['audio']
-    caller_id = request.form.get('caller_id', 'unknown')  # Optional caller ID
-    lang = request.form.get('lang', 'eng')  # Optional language
-
-    print(f"Received audio file from caller ID: {caller_id}, Language: {lang}")  # Debug line
 
     def send_transcription(line):
-        # Emit the transcription result back to the frontend
-        socketio.emit('transcription_update', {'caller_id': caller_id, 'line': line})
+        socketio.emit('transcription_update', {'caller_id': 0, 'line': line})
 
-    # Set a timeout for the transcription process (you can adjust this as needed)
-    timeout = 70  # Example timeout value in seconds
-
-    # Start transcription in a separate thread
-    threading.Thread(target=transcribe, args=(audio_file, timeout, lang, send_transcription)).start()
+    threading.Thread(target=main, args=(send_transcription,)).start()
     return jsonify({'status': 'Transcription started'})
 
-# @app.route('/')
-# def serve_index():
-#     return send_from_directory(app.static_folder, 'index.html')
-
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
-
-
-
-
-
-
-
-
-# from flask import Flask, request, jsonify, send_from_directory
-# from flask_socketio import SocketIO, emit
-# import threading
-# import httpx
-# from deepgram import DeepgramClient, DeepgramClientOptions, LiveTranscriptionEvents, LiveOptions
-# from dotenv import load_dotenv
-# import os
-# import time
-
-# app = Flask(__name__, static_folder='static')
-# socketio = SocketIO(app, cors_allowed_origins="*")
-
-# load_dotenv()
-# API_KEY = os.getenv("DEEPGRAM_API_KEY")
-# config = DeepgramClientOptions(
-#             options={"keepalive": "true"} # Comment this out to see the effect of not using keepalive
-#         )
-# full_transcript = []
-# TAG = 'SPEAKER '
-
-# def transcribe(url, timeout, send_transcription):
-#     try:
-#         deepgram = DeepgramClient(API_KEY, config)
-#         dg_connection = deepgram.listen.live.v("1")
-
-#         def on_message(self, result, **kwargs):
-#             if result.is_final:
-#                 lines = []
-#                 words = result.channel.alternatives[0].words
-#                 curr_speaker = 0
-#                 curr_line = ''
-#                 for word_struct in words:
-#                     word_speaker = word_struct["speaker"]
-#                     word = word_struct["punctuated_word"]
-#                     if word_speaker == curr_speaker:
-#                         curr_line += ' ' + word
-#                     else:
-#                         lines = []
-#                         tag = TAG + str(curr_speaker) + ':'
-#                         full_line = tag + curr_line
-#                         if curr_line != "":
-#                             lines.append(full_line)
-#                             full_transcript.append(full_line)
-#                         curr_speaker = word_speaker
-#                         curr_line = ' ' + word
-#                 if curr_line != "":
-#                     full_line = TAG + str(curr_speaker) + ':' + curr_line
-#                     lines.append(full_line)
-#                     full_transcript.append(full_line)
-#                 print(full_transcript)
-#                 send_transcription(full_transcript)
-
-#         def on_metadata(self, metadata, **kwargs):
-#             print(f"\n\n{metadata}\n\n")
-
-#         def on_error(self, error, **kwargs):
-#             print(f"\n\n{error}\n\n")
-
-#         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
-#         dg_connection.on(LiveTranscriptionEvents.Metadata, on_metadata)
-#         dg_connection.on(LiveTranscriptionEvents.Error, on_error)
-
-#         options = LiveOptions(
-#             model="nova-2",
-#             language="en-US",
-#             diarize=True,
-#             smart_format=True,
-#         )
-
-#         dg_connection.start(options)
-
-#         lock_exit = threading.Lock()
-#         exit = False
-
-#         def myThread():
-#             with httpx.stream("GET", url) as r:
-#                 for data in r.iter_bytes():
-#                     lock_exit.acquire()
-#                     if exit:
-#                         break
-#                     lock_exit.release()
-#                     dg_connection.send(data)
-
-#         myHttp = threading.Thread(target=myThread)
-#         myHttp.start()
-
-#         def finish_connection():
-#             time.sleep(timeout)
-#             dg_connection.finish()
-#             print("Connection finished after", timeout, "seconds")
-
-#         timer_thread = threading.Thread(target=finish_connection)
-#         timer_thread.start()
-
-#         input("Press Enter to stop recording...\n\n")
-
-#         lock_exit.acquire()
-#         exit = True
-#         lock_exit.release()
-
-#         myHttp.join()
-#         dg_connection.finish()
-
-#         print("Finished")
-
-#     except Exception as e:
-#         print(f"Could not open socket: {e}")
-#         return
-
-# @app.route('/transcribe', methods=['POST'])
-# def transcribe_route():
-#     data = request.get_json()
-#     url = data['url']
-#     timeout = 70 # temporarily set
-#     print(url)
-
-#     def send_transcription(transcript):
-#         socketio.emit('transcription_update', {'transcript': transcript})
-
-#     threading.Thread(target=transcribe, args=(url, timeout, send_transcription)).start()
-#     return jsonify({'status': 'Transcription started'})
-
-# @app.route('/')
-# def serve_index():
-#     return send_from_directory(app.static_folder, 'index.html')
-
-# if __name__ == '__main__':
-#     socketio.run(app, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+if __name__ == "__main__":
+    socketio.run(app, host='127.0.0.1', port=5001)
