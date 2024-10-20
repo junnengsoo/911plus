@@ -5,7 +5,7 @@ from text_parser import text_to_json
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+# CORS(app)  # This will enable CORS for all routes
 
 @app.route('/identify-condition', methods=['POST'])
 def identify_condition_api():
@@ -20,4 +20,4 @@ def identify_details_api():
     return text_to_json(details)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003)
+    app.run(host='127.0.0.1', port=5003)
