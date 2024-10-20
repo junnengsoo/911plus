@@ -6,7 +6,7 @@ import CallerCard from "./components/CallerCard";
 import { getCallers } from "./api/api";
 import { Caller, Message } from "@/components/CallerTypes";
 
-const socket = io("http://localhost:5001/transcribe"); // Adjust the URL for your backend
+const socket = io("http://localhost:5001"); // Adjust the URL if needed
 
 export function App() {
   const [callers, setCallers] = useState<Caller[]>([]);
@@ -14,10 +14,8 @@ export function App() {
   const [transcriptionStarted, setTranscriptionStarted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const callTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const resetState = () => {
-    stopAudioStream(); // Stop audio streaming when resetting state
     fetchCallers();
     setselectedCallerIds([]);
     setTranscriptionStarted(false);
@@ -74,57 +72,12 @@ export function App() {
     });
   };
 
-  const startTranscription = async (caller: Caller) => {
+  const startTranscription = (caller: Caller) => {
     console.log("Starting transcription for " + caller.id.toString());
-    
-    // Start audio stream
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new MediaRecorder(stream);
-    
-    mediaRecorderRef.current.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
-        console.log("Audio data available:", event.data.size); // Log audio data size
-        // Send audio data to the transcription API
-        const formData = new FormData();
-        formData.append('audio', event.data, 'audio.webm'); // Append audio data
-
-        try {
-          const response = await fetch('http://localhost:5001/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
-          console.log("Audio data sent to the server."); // Log successful send
-          
-          // Handle transcription response
-          const transcriptionResult = await response.json();
-          console.log("Transcription result:", transcriptionResult);
-          // You can add logic here to handle the transcription result if needed
-          
-        } catch (error) {
-          console.error("Error sending audio data:", error);
-        }
-      }
-    };
-
-    mediaRecorderRef.current.start(100); // Send data every 100ms
-    console.log("Audio stream started."); // Log when audio stream starts
-
-    // Start transcription request to the backend
-    fetch('https://transcription-service-community-defender-ai.apps.innovate.sg-cna.com/transcribe', {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ url: caller.url, caller_id: caller.id, lang: caller.lang })
-    }).then(() => {
-      setTranscriptionStarted(true);
-      // Check if the caller is the one currently operated on and if the operator is online
-      if (audioRef.current && caller.isOperatorOnline) {
-        audioRef.current.src = "https://niclee1219.github.io/SCDFxDELL-995calls/Audio/ambulanceaispeedup.mp3"; // Set the audio source to the current caller's URL
-        audioRef.current.play(); // Play the audio when transcription starts
-      }
-    })
-    .catch(console.error);
+    fetch('http://localhost:5001/transcribe', {
+            method: 'GET',
+        })
+        .catch(console.error);
   };
 
   useEffect(() => {
@@ -159,19 +112,12 @@ export function App() {
 
   // Start transcription for all callers on user action
   const handleStartTranscriptionClick = () => {
-    console.log("start transcription clicked");
-    startAudioStream(); // Start audio streaming when transcription starts
-
+    console.log("start transcription clicked")
     // Ensure transcription is started only once per session
     if (!transcriptionStarted && callers.length > 0) {
-        selectedCallerIds.forEach((callerId) => {
-            const caller = callers.find(c => c.id === callerId);
-            if (caller) {
-                startTranscription(caller); // Start transcription for each selected caller
-            }
-        });
-        setTranscriptionStarted(true); // Ensure we don't start it more than once
-        console.log("starting transcription");
+      callers.forEach((caller) => startTranscription(caller));
+      setTranscriptionStarted(true); // Ensure we don't start it more than once
+      console.log("starting transcription")
     }
   };
 
@@ -220,7 +166,7 @@ export function App() {
 
     if (caller.address.includes("Address")) { // to change caller.name === "Caller 1" || 
       try {
-        const response = await fetch("https://identification-service-community-defender-ai.apps.innovate.sg-cna.com/identify-details", {
+        const response = await fetch("http://localhost:5003/identify-details", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -264,7 +210,7 @@ export function App() {
     if (caller.condition === "Unknown") { // consider removing
       try {
         const response = await fetch(
-          "https://identification-service-community-defender-ai.apps.innovate.sg-cna.com/identify-condition",
+          "http://localhost:5003/identify-condition",
           {
             method: "POST",
             headers: {
@@ -306,7 +252,7 @@ export function App() {
     if (caller.extractedMessages.includes("messages")) { // consider removing
       try {
         console.log("summary api for " + caller.id)
-        const response = await fetch("https://summarization-service-community-defender-ai.apps.innovate.sg-cna.com/summarize", {
+        const response = await fetch("http://localhost:5002/summarize", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -425,39 +371,6 @@ export function App() {
       };
     }
   }, [transcriptionStarted]); // Empty dependency array means this effect runs once on mount
-
-  const startAudioStream = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new MediaRecorder(stream);
-    
-    mediaRecorderRef.current.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
-        console.log("Audio data available:", event.data.size); // Log audio data size
-        // Send audio data to the transcription API
-        const formData = new FormData();
-        formData.append('audio', event.data, 'audio.webm'); // Append audio data
-
-        try {
-          await fetch('http://localhost:5001/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
-          console.log("Audio data sent to the server."); // Log successful send
-        } catch (error) {
-          console.error("Error sending audio data:", error);
-        }
-      }
-    };
-
-    mediaRecorderRef.current.start(100); // Send data every 100ms
-    console.log("Audio stream started."); // Log when audio stream starts
-  };
-
-  const stopAudioStream = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-    }
-  };
 
   return (
     <div className="grid h-screen w-screen grid-flow-row grid-cols-5 grid-rows-2">
